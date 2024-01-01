@@ -1,0 +1,27 @@
+#########################################################################
+# Title:         Saltbox: Cloudflare DNS Role                           #
+# Author(s):     salty                                                  #
+# URL:           https://github.com/saltyorg/Saltbox                    #
+# --                                                                    #
+#########################################################################
+#                   GNU General Public License v3.0                     #
+#########################################################################
+---
+- name: "Fail if no DNS management is enabled"
+  ansible.builtin.fail:
+    msg:
+      - "IPv4 or IPv6 DNS management has to be enabled."
+      - "Check your 'adv_settings.yml' config."
+  when: not (dns.ipv4 or dns.ipv6)
+
+- name: "Fail if not using Cloudflare"
+  ansible.builtin.fail:
+    msg:
+      - "You do not have Cloudflare enabled, this only works with Cloudflare."
+  when: not cloudflare_is_enabled
+
+- name: Remove existing Docker container
+  ansible.builtin.include_tasks: "{{ resources_tasks_path }}/docker/remove_docker_container.yml"
+
+- name: Create Docker container
+  ansible.builtin.include_tasks: "{{ resources_tasks_path }}/docker/create_docker_container.yml"

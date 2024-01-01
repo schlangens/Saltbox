@@ -17,23 +17,21 @@
   register: jellyfin_xml_old
 
 - name: Preinstall MIGRATE | New `{{ jellyfin_paths_xml_loct_old | basename }}` tasks
+  when: jellyfin_xml_old.stat.exists
   block:
-
     - name: Preinstall MIGRATE | Import `{{ jellyfin_paths_xml_loct_old | basename }}` if it exists
       ansible.builtin.copy:
         src: "{{ jellyfin_paths_xml_loct_old }}"
         dest: "{{ jellyfin_paths_sys_xml_location }}"
         owner: "{{ user.name }}"
         group: "{{ user.name }}"
-        mode: 0775
+        mode: "0775"
         force: false
 
     - name: Preinstall MIGRATE | Remove old `{{ jellyfin_paths_xml_loct_old | basename }}` if it exists"
       ansible.builtin.file:
         path: "{{ jellyfin_paths_xml_loct_old }}"
         state: absent
-
-  when: jellyfin_xml_old.stat.exists
 
 # Low priority as migrate should not be needed.
 # Need to find out what other files need to be moved, network.xml - metadata, db's.
@@ -67,16 +65,22 @@
 # Block DLNA network spam
 ################################
 
-- name: Settings DLNA | New `{{ jellyfin_paths_dlna_location | basename }}` tasks
-  block:
-
-    - name: Import 'dlna.xml' config
-      ansible.builtin.copy:
-        src: "dlna.xml"
-        dest: "{{ jellyfin_paths_dlna_location }}"
-        owner: "{{ user.name }}"
-        group: "{{ user.name }}"
-        mode: 0775
-        force: false
-
+- name: Import 'dlna.xml' config
+  ansible.builtin.copy:
+    src: "dlna.xml"
+    dest: "{{ jellyfin_paths_dlna_location }}"
+    owner: "{{ user.name }}"
+    group: "{{ user.name }}"
+    mode: "0775"
+    force: false
   when: (not jellyfin_dlna.stat.exists)
+
+- name: Settings | Update 'network.xml' file
+  community.general.xml:
+    path: "{{ jellyfin_paths_net_xml_location }}"
+    xpath: "/NetworkConfiguration/{{ item.xpath }}"
+    value: "{{ item.value }}"
+  become: true
+  become_user: "{{ user.name }}"
+  loop: "{{ jellyfin_network_settings_list }}"
+  when: network_xml.stat.exists

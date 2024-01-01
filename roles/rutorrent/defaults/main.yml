@@ -26,12 +26,12 @@ rutorrent_paths_folders_list:
   - "{{ rutorrent_paths_location }}/themes"
   - "{{ rutorrent_paths_downloads_location }}"
   - "{{ rutorrent_paths_downloads_location }}/completed"
+  - "{{ rutorrent_paths_downloads_location }}/incoming"
   - "{{ rutorrent_paths_downloads_location }}/watched"
 
 # Config files
 rutorrent_paths_config_php_location: "{{ rutorrent_paths_location }}/rutorrent/settings/config.php"
 rutorrent_paths_rtorrent_rc_location: "{{ rutorrent_paths_location }}/rtorrent/rtorrent.rc"
-rutorrent_paths_nginx_conf_location: "{{ rutorrent_paths_location }}/nginx/nginx.conf"
 rutorrent_paths_php_local_ini_location: "{{ rutorrent_paths_location }}/php/php-local.ini"
 rutorrent_paths_plugins_ini_location: "{{ rutorrent_paths_location }}/rutorrent/settings/plugins.ini"
 
@@ -42,7 +42,9 @@ rutorrent_paths_plugins_ini_location: "{{ rutorrent_paths_location }}/rutorrent/
 rutorrent_web_subdomain: "{{ rutorrent_name }}"
 rutorrent_web_domain: "{{ user.domain }}"
 rutorrent_web_port: "80"
-rutorrent_web_url: "{{ 'https://' + rutorrent_web_subdomain + '.' + rutorrent_web_domain }}"
+rutorrent_web_url: "{{ 'https://' + (rutorrent_web_subdomain + '.' + rutorrent_web_domain
+                    if (rutorrent_web_subdomain | length > 0)
+                    else rutorrent_web_domain) }}"
 
 ################################
 # DNS
@@ -57,28 +59,20 @@ rutorrent_dns_proxy: "{{ dns.proxied }}"
 ################################
 
 rutorrent_traefik_sso_middleware: "{{ traefik_default_sso_middleware }}"
-
-rutorrent_traefik_middleware_default: "{{ traefik_default_middleware + ','
-                                          + lookup('vars', rutorrent_name + '_traefik_sso_middleware', default=rutorrent_traefik_sso_middleware)
-                                       if (lookup('vars', rutorrent_name + '_traefik_sso_middleware', default=rutorrent_traefik_sso_middleware) | length > 0)
-                                       else traefik_default_middleware }}"
+rutorrent_traefik_middleware_default: "{{ traefik_default_middleware }}"
 rutorrent_traefik_middleware_custom: ""
-rutorrent_traefik_middleware: "{{ rutorrent_traefik_middleware_default + ','
-                                  + rutorrent_traefik_middleware_custom
-                               if (not rutorrent_traefik_middleware_custom.startswith(',') and rutorrent_traefik_middleware_custom | length > 0)
-                               else rutorrent_traefik_middleware_default
-                                  + rutorrent_traefik_middleware_custom }}"
 rutorrent_traefik_certresolver: "{{ traefik_default_certresolver }}"
 rutorrent_traefik_enabled: true
 rutorrent_traefik_api_enabled: true
-rutorrent_traefik_api_middleware: "rutorrent-auth,{{ traefik_default_middleware }}"
-rutorrent_traefik_api_endpoint: "`/RPC2`"
+rutorrent_traefik_api_middleware: "rutorrent-auth,{{ traefik_default_middleware_api }}"
+rutorrent_traefik_api_endpoint: "PathPrefix(`/RPC2`)"
 
 ################################
 # Config
 ################################
 
 rutorrent_config_public_trackers: false
+rutorrent_config_diskspace_path: "/mnt"
 
 ## New Installs
 
@@ -127,7 +121,7 @@ rutorrent_config_new_installs_php_local_ini_settings_list: "{{ rutorrent_config_
 # rtorrent.rc
 rutorrent_config_existing_installs_rutorrent_rc_settings_default:
   # Execute - Initiate Plugins
-  - { option: "execute", value: "{sh,-c,/usr/bin/php7 /app/rutorrent/php/initplugins.php abc &}" }
+  - { option: "execute", value: "{sh,-c,/usr/bin/php81 /app/rutorrent/php/initplugins.php abc &}" }
   # IP address that is reported to the tracker
   - { option: "network.local_address.set", value: "{{ ip_address_public }}" }
   # Ports
@@ -145,7 +139,7 @@ rutorrent_config_existing_installs_rutorrent_rc_settings_list: "{{ rutorrent_con
 # THEME
 ################################
 
-# Options can be found at https://github.com/gilbN/theme.park
+# Options can be found at https://github.com/themepark-dev/theme.park
 rutorrent_themepark_enabled: false
 rutorrent_themepark_theme: "{{ global_themepark_theme }}"
 rutorrent_themepark_domain: "{{ global_themepark_domain }}"
@@ -160,16 +154,14 @@ rutorrent_docker_container: "{{ rutorrent_name }}"
 # Image
 rutorrent_docker_image_pull: true
 rutorrent_docker_image_tag: "latest"
-rutorrent_docker_image: "horjulf/rutorrent-autodl:{{ rutorrent_docker_image_tag }}"
+rutorrent_docker_image: "saltydk/rutorrent:{{ rutorrent_docker_image_tag }}"
 
 # Ports
-rutorrent_docker_ports_51413: "{{ port_lookup_51413.port
-                               if (port_lookup_51413.port is defined)
-                                  and (port_lookup_51413.port | trim | length > 0)
+rutorrent_docker_ports_51413: "{{ port_lookup_51413.meta.port
+                               if (port_lookup_51413.meta.port is defined) and (port_lookup_51413.meta.port | trim | length > 0)
                                else '51413' }}"
-rutorrent_docker_ports_6881: "{{ port_lookup_6881.port
-                              if (port_lookup_6881.port is defined)
-                                  and (port_lookup_6881.port | trim | length > 0)
+rutorrent_docker_ports_6881: "{{ port_lookup_6881.meta.port
+                              if (port_lookup_6881.meta.port is defined) and (port_lookup_6881.meta.port | trim | length > 0)
                               else '6881' }}"
 
 rutorrent_docker_ports_defaults:

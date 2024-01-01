@@ -28,7 +28,9 @@ grafana_paths_folders_list:
 grafana_web_subdomain: "{{ grafana_name }}"
 grafana_web_domain: "{{ user.domain }}"
 grafana_web_port: "3000"
-grafana_web_url: "{{ 'https://' + grafana_web_subdomain + '.' + grafana_web_domain }}"
+grafana_web_url: "{{ 'https://' + (grafana_web_subdomain + '.' + grafana_web_domain
+                  if (grafana_web_subdomain | length > 0)
+                  else grafana_web_domain) }}"
 
 ################################
 # DNS
@@ -42,15 +44,19 @@ grafana_dns_proxy: "{{ dns.proxied }}"
 # Traefik
 ################################
 
-grafana_traefik_middleware: "{{ traefik_default_middleware }}"
+grafana_traefik_sso_middleware: ""
+grafana_traefik_middleware_default: "{{ traefik_default_middleware }}"
+grafana_traefik_middleware_custom: ""
 grafana_traefik_certresolver: "{{ traefik_default_certresolver }}"
 grafana_traefik_enabled: true
+grafana_traefik_api_enabled: false
+grafana_traefik_api_endpoint: ""
 
 ################################
 # Plugins
 ################################
 
-grafana_plugins: "grafana-piechart-panel,grafana-worldmap-panel"
+grafana_plugins: "grafana-worldmap-panel"
 
 ################################
 # Docker

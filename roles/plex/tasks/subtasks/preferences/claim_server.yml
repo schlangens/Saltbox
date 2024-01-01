@@ -13,8 +13,9 @@
   when: plex_account_is_enabled
 
 - name: Claim Server | Get {{ plex_name | title }} claim code via API
+  when: plex_account_is_enabled
   block:
-    - name: "Get {{ plex_name | title }} claim code"
+    - name: "Claim Server | Get {{ plex_name | title }} claim code"
       ansible.builtin.uri:
         url: https://plex.tv/api/claim/token.json
         method: GET
@@ -28,17 +29,16 @@
         headers:
           Accept: "application/json"
         status_code: 200
+      environment: "{{ plex_proxy_dict }}"
       register: plex_claim
 
     - name: "Claim Server | Set 'plex_claim_code' variable"
       ansible.builtin.set_fact:
         plex_claim_code: "{{ plex_claim.json.token }}"
 
-  when: plex_account_is_enabled
-
 - name: Claim Server | Get {{ plex_name | title }} claim code via prompts
+  when: (not plex_account_is_enabled)
   block:
-
     - name: "Claim Server | Ask user for {{ plex_name | title }} claim code"
       ansible.builtin.pause:
         prompt: "Please visit 'https://plex.tv/claim', login with your Plex account,
@@ -49,14 +49,12 @@
       ansible.builtin.set_fact:
         plex_claim_code: "{{ plex_claim_code_prompt.user_input }}"
 
-  when: (not plex_account_is_enabled)
-
 - name: Claim Server | Assert {{ plex_name | title }} claim code exists
   ansible.builtin.assert:
     that:
-      - "plex_claim_code is defined"
-      - "plex_claim_code is not none"
-      - "plex_claim_code | trim | length > 0"
+      - plex_claim_code is defined
+      - plex_claim_code is not none
+      - plex_claim_code | trim | length > 0
     quiet: true
 
 - name: "Claim Server | Display {{ plex_name | title }} claim code"

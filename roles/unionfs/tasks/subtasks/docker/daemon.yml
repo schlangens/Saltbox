@@ -7,47 +7,35 @@
 #                   GNU General Public License v3.0                     #
 #########################################################################
 ---
+- name: Docker | Daemon | Set '_remotes_list' variable
+  ansible.builtin.set_fact:
+    _remotes_services_list: "{{ _remotes_services_list | default('') + (rclone_service_template + rclone_remote_name + '.service ') }}"
+  with_items: "{{ rclone.remotes }}"
+  when: rclone_remote_is_defined and use_remote and item.settings.template != "nfs" and item.settings.mount
+
 - name: "Docker | Daemon | Create override directory"
   ansible.builtin.file:
-    path: /etc/systemd/system/docker.service.d
+    path: "/etc/systemd/system/docker.service.d"
     state: directory
     mode: "0775"
 
 - name: "Docker | Daemon | Import override file"
   ansible.builtin.template:
-    src: override.conf.j2
-    dest: /etc/systemd/system/docker.service.d/override.conf
-    mode: "0775"
-    force: false
-  register: import_override
+    src: "roles/docker/templates/override.conf.j2"
+    dest: "/etc/systemd/system/docker.service.d/override.conf"
+    mode: "0644"
+    force: "{{ docker_service_force }}"
 
-- name: "Docker | Daemon | Edit override file"
-  community.general.ini_file:
-    path: /etc/systemd/system/docker.service.d/override.conf
-    section: Unit
-    option: "After"
-    value: "{{ mount_type }}.service"
-    state: present
-    mode: "0755"
-    no_extra_spaces: true
-  register: edit_override
+- name: "Docker | Daemon | Run systemd daemon-reload"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
 
-- name: Docker | Daemon | Restart Docker Service
-  block:
+- name: "Docker | Daemon | Start docker service"
+  ansible.builtin.systemd_service:
+    name: docker
+    state: restarted
+    enabled: true
 
-    - name: "Docker | Daemon | Systemd daemon-reload"
-      ansible.builtin.systemd:
-        name: docker
-        state: reloaded
-        daemon_reload: true
-
-    - name: "Docker | Daemon | Restart docker service"
-      ansible.builtin.systemd:
-        name: docker
-        state: restarted
-
-    - name: "Docker | Daemon | Wait for 30 seconds before commencing"
-      ansible.builtin.wait_for:
-        timeout: 30
-
-  when: import_override.changed or edit_override.changed
+- name: "Docker | Daemon | Wait for 30 seconds before commencing"
+  ansible.builtin.wait_for:
+    timeout: 30

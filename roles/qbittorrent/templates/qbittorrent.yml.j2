@@ -1,0 +1,34 @@
+http:
+  routers:
+    {{ qbittorrent_name }}-http:
+      entryPoints:
+        - "web"
+      rule: "Host(`{{ lookup('vars', qbittorrent_name + '_web_subdomain', default=qbittorrent_web_subdomain) + '.' + lookup('vars', qbittorrent_name + '_web_domain', default=qbittorrent_web_domain) }}`)"
+      middlewares:
+        {{ traefik_default_middleware_http.split(',') | to_nice_yaml | trim | indent(8) }}
+      service: "{{ qbittorrent_name }}"
+    {{ qbittorrent_name }}:
+      entryPoints:
+        - "websecure"
+      rule: "Host(`{{ lookup('vars', qbittorrent_name + '_web_subdomain', default=qbittorrent_web_subdomain) + '.' + lookup('vars', qbittorrent_name + '_web_domain', default=qbittorrent_web_domain) }}`)"
+      middlewares:
+        {{ traefik_middleware.split(',') | to_nice_yaml | trim | indent(8) }}
+      service: "{{ qbittorrent_name }}"
+      tls:
+        options: securetls@file
+        certResolver: {{ qbittorrent_traefik_certresolver}}
+
+  services:
+    {{ qbittorrent_name }}:
+      loadBalancer:
+        servers:
+          - url: "http://172.19.0.1:{{ qbittorrent_docker_ports_8080 }}"
+
+{% if qbittorrent_themepark_enabled and global_themepark_plugin_enabled %}
+  middlewares:
+    themepark-{{ lookup("vars", qbittorrent_name + "_name", default=qbittorrent_name) }}:
+      plugin:
+        themepark:
+          app: "qbittorrent"
+          theme: "{{ lookup("vars", qbittorrent_name + "_themepark_theme", default=qbittorrent_themepark_theme) }}"
+{% endif %}

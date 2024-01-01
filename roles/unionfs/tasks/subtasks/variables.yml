@@ -8,42 +8,19 @@
 ##########################################################################
 ---
 ################################
-# UnionFS Mount Types
+# Remotes List
 ################################
-
-- name: Variables | Set 'mount_type_is_defined' variable
+- name: Variables | Set '_remotes_list' variable
   ansible.builtin.set_fact:
-    mount_type_is_defined: "{{ (mount_type is defined) and
-                               (mount_type is not none) and
-                               (mount_type | trim | length > 0) }}"
+    _remotes_list: "{{ _remotes_list | default('') + '/mnt/remote/' + (item.remote.split(':')[0] if ':' in item.remote else item.remote) + '=' + mergerfs_remote_branch_mode_lookup + ':' }}"
+  with_items: "{{ rclone.remotes }}"
+  when: rclone_remote_is_defined and use_remote and item.settings.mount and item.settings.union
 
-- name: Variables | Fail when no valid remote mount type is specified.
-  ansible.builtin.fail:
-    msg: "'{{ mounts.unionfs }}' is not a valid unionfs mount type."
-  when: (not mount_type_is_defined)
-
-################################
-# Service Files List
-################################
-
-- name: Variables | Set '_service_file' variable
+- name: Variables | Append 'custom_mount_branch' to '_remotes_list' variable
   ansible.builtin.set_fact:
-    _service_file: "{{ mount_type }}.service"
+    _remotes_list: "{{ _remotes_list | default('') + custom_mount_branch }}"
 
-- name: Variables | Set 'service_files_stat' variable
-  ansible.builtin.stat:
-    path: "/etc/systemd/system/{{ _service_file }}"
-  register: service_file_stat
-
-- name: Variables | Create empty 'service_files_temp' list
+- name: Variables | Remove trailing colon in '_remotes_list'
   ansible.builtin.set_fact:
-    service_files_temp: []
-
-- name: Variables | Build 'service_files' list
-  ansible.builtin.set_fact:
-    service_files_temp: "{{ service_files_temp + [_service_file] }}"
-  when: service_file_stat.stat.exists
-
-- name: Variables | Set new 'service_files' variable
-  ansible.builtin.set_fact:
-    service_files: "{{ service_files_temp }}"
+    _remotes_list: "{{ _remotes_list[:-1] }}"
+  when: (_remotes_list is defined) and (_remotes_list | length > 0) and (_remotes_list[-1] == ':')

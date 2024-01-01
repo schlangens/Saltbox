@@ -6,6 +6,12 @@
 #                   GNU General Public License v3.0                     #
 #########################################################################
 ---
+- name: Remove '{{ qbittorrent_name }}' from hosts
+  ansible.builtin.blockinfile:
+    path: "/etc/hosts"
+    marker: "# {mark} ANSIBLE {{ qbittorrent_name }} MANAGED BLOCK"
+    block: ""
+
 - name: Add DNS record
   ansible.builtin.include_tasks: "{{ resources_tasks_path }}/dns/tasker.yml"
   vars:
@@ -15,10 +21,42 @@
 - name: Remove existing Docker container
   ansible.builtin.include_tasks: "{{ resources_tasks_path }}/docker/remove_docker_container.yml"
 
+- name: Check if legacy '{{ qbittorrent_name }}.service' exists
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/{{ qbittorrent_name }}.service"
+  register: qbittorrent_legacy_service
+
+- name: "Execute legacy tasks"
+  ansible.builtin.include_tasks: subtasks/legacy.yml
+  when: qbittorrent_legacy_service.stat.exists
+
+- name: Check if '{{ qbittorent_service_name }}' exists
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/{{ qbittorent_service_name }}"
+  register: qbittorrent_service
+
+- name: Stop '{{ qbittorent_service_name }}'
+  ansible.builtin.systemd_service:
+    name: "{{ qbittorent_service_name }}"
+    state: stopped
+  when: qbittorrent_service.stat.exists
+
+- name: Remove '{{ qbittorent_service_name }}' file
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ qbittorent_service_name }}"
+    state: absent
+  when: qbittorrent_service.stat.exists and not qbittorrent_host_install
+
+- name: Remove '{{ qbittorrent_name }}-nox' file
+  ansible.builtin.file:
+    path: "/usr/bin/{{ qbittorrent_name }}-nox"
+    state: absent
+  when: qbittorrent_service.stat.exists and not qbittorrent_host_install
+
 - name: Create directories
   ansible.builtin.include_tasks: "{{ resources_tasks_path }}/directories/create_directories.yml"
 
-- name: Check if existing config file exists
+- name: Check if config file exists
   ansible.builtin.stat:
     path: "{{ qbittorrent_paths_conf }}"
   register: qbittorrent_paths_conf_stat
@@ -27,8 +65,58 @@
   ansible.builtin.import_tasks: "subtasks/pre-install/main.yml"
   when: (not continuous_integration)
 
-- name: Create Docker container
-  ansible.builtin.include_tasks: "{{ resources_tasks_path }}/docker/create_docker_container.yml"
+- name: Host Install
+  when: qbittorrent_host_install
+  block:
+    - name: Add '{{ qbittorrent_name }}' to hosts
+      ansible.builtin.blockinfile:
+        path: "/etc/hosts"
+        marker: "# {mark} ANSIBLE {{ qbittorrent_name }} MANAGED BLOCK"
+        block: |
+          172.19.0.1 {{ qbittorrent_name }}
+
+    - name: Get Download Url
+      ansible.builtin.shell: "{{ qbittorrent_host_version }}"
+      register: qbittorret_release_version
+
+    - name: Download 'qbittorrent-nox'
+      ansible.builtin.get_url:
+        url: "{{ qbittorrent_host_download_url }}"
+        dest: "/usr/bin/{{ qbittorrent_name }}-nox"
+        mode: "0755"
+        force: true
+
+    - name: Import '{{ qbittorrent_name }}.service'
+      ansible.builtin.template:
+        src: "qbittorrent.service.j2"
+        dest: "/etc/systemd/system/{{ qbittorent_service_name }}"
+        mode: "0755"
+        force: true
+
+    - name: Systemd daemon-reload '{{ qbittorent_service_name }}'
+      ansible.builtin.systemd_service:
+        name: "{{ qbittorent_service_name }}"
+        state: stopped
+        enabled: false
+        daemon_reload: true
+
+    - name: Start '{{ qbittorent_service_name }}'
+      ansible.builtin.systemd_service:
+        name: "{{ qbittorent_service_name }}"
+        state: started
+        enabled: true
+
+- name: Docker Install
+  when: not qbittorrent_host_install
+  block:
+    - name: Remove '{{ qbittorrent_name }}' from hosts
+      ansible.builtin.blockinfile:
+        path: "/etc/hosts"
+        marker: "# {mark} ANSIBLE {{ qbittorrent_name }} MANAGED BLOCK"
+        state: absent
+
+    - name: Create Docker container
+      ansible.builtin.include_tasks: "{{ resources_tasks_path }}/docker/create_docker_container.yml"
 
 - name: Post-Install Tasks
   ansible.builtin.import_tasks: "subtasks/post-install/main.yml"

@@ -47,7 +47,9 @@ netdata_paths_folders_list:
 netdata_web_subdomain: "{{ netdata_name }}"
 netdata_web_domain: "{{ user.domain }}"
 netdata_web_port: "19999"
-netdata_web_url: "{{ 'https://' + netdata_web_subdomain + '.' + netdata_web_domain }}"
+netdata_web_url: "{{ 'https://' + (netdata_web_subdomain + '.' + netdata_web_domain
+                  if (netdata_web_subdomain | length > 0)
+                  else netdata_web_domain) }}"
 
 ################################
 # DNS
@@ -62,19 +64,12 @@ netdata_dns_proxy: "{{ dns.proxied }}"
 ################################
 
 netdata_traefik_sso_middleware: "{{ traefik_default_sso_middleware }}"
-
-netdata_traefik_middleware_default: "{{ traefik_default_middleware + ','
-                                        + lookup('vars', netdata_name + '_traefik_sso_middleware', default=netdata_traefik_sso_middleware)
-                                     if (lookup('vars', netdata_name + '_traefik_sso_middleware', default=netdata_traefik_sso_middleware) | length > 0)
-                                     else traefik_default_middleware }}"
+netdata_traefik_middleware_default: "{{ traefik_default_middleware }}"
 netdata_traefik_middleware_custom: ""
-netdata_traefik_middleware: "{{ netdata_traefik_middleware_default + ','
-                                + netdata_traefik_middleware_custom
-                             if (not netdata_traefik_middleware_custom.startswith(',') and netdata_traefik_middleware_custom | length > 0)
-                             else netdata_traefik_middleware_default
-                                + netdata_traefik_middleware_custom }}"
 netdata_traefik_certresolver: "{{ traefik_default_certresolver }}"
 netdata_traefik_enabled: true
+netdata_traefik_api_enabled: false
+netdata_traefik_api_endpoint: ""
 
 ################################
 # Docker
@@ -123,6 +118,7 @@ netdata_docker_volumes_default:
   - "/proc:/host/proc:ro"
   - "/sys:/host/sys:ro"
   - "/etc/os-release:/host/etc/os-release:ro"
+  - "/var/log:/host/var/log:ro"
 netdata_docker_volumes_custom: []
 netdata_docker_volumes: "{{ netdata_docker_volumes_default
                             + netdata_docker_volumes_custom }}"

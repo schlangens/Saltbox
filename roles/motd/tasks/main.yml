@@ -62,13 +62,13 @@
   when: motd_news.stat.exists
 
 - name: Disable MOTD news service
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: motd-news.service
     state: stopped
     enabled: no
 
 - name: Disable MOTD news timer
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: motd-news.timer
     state: stopped
     enabled: no
@@ -77,7 +77,7 @@
   ansible.builtin.file:
     path: /etc/update-motd.d
     state: directory
-    mode: 0775
+    mode: "0775"
 
 - name: Clone Saltbox MOTD
   ansible.builtin.git:
@@ -92,7 +92,6 @@
 - name: Install pip requirements
   ansible.builtin.pip:
     requirements: /opt/motd/requirements.txt
-    executable: pip3
 
 - name: Check if 'config.json' exists
   ansible.builtin.stat:
@@ -105,27 +104,25 @@
     dest: /opt/motd/config.json
     owner: "{{ user.name }}"
     group: "{{ user.name }}"
-    mode: 0775
+    mode: "0775"
     force: false
   when: (not motd_config.stat.exists)
 
 - name: Banner Title migration
+  when: motd_config.stat.exists
   block:
-
     - name: Check value of motd banner
       ansible.builtin.shell: "jq '.motd.banner_title' /opt/motd/config.json"
       register: motd_banner
 
     - name: Migrate value of motd banner
       ansible.builtin.shell: |
-        jq '.motd.banner_title = "Saltbox"' /opt/motd/config.json|sponge /opt/motd/config.json
+        jq '.motd.banner_title = "Saltbox"' /opt/motd/config.json | sponge /opt/motd/config.json
       when: ('Cloudbox' in motd_banner.stdout)
 
-  when: motd_config.stat.exists
-
 - name: Config path migration
+  when: motd_config.stat.exists
   block:
-
     - name: Check value of disk path
       ansible.builtin.shell: "jq '.disk.path' /opt/motd/config.json"
       register: disk_path
@@ -135,15 +132,13 @@
         jq --arg disk / '. + {disk: {path: $disk}}' /opt/motd/config.json | sponge /opt/motd/config.json
       when: (disk_path.stdout == 'null')
 
-  when: motd_config.stat.exists
-
 - name: Touch '/opt/motd/activity.log' file
   ansible.builtin.file:
     path: /opt/motd/activity.log
     state: touch
     owner: "{{ user.name }}"
     group: "{{ user.name }}"
-    mode: 0775
+    mode: "0775"
 
 - name: Set 'saltbox-motd.py' as executable
   ansible.builtin.file:
@@ -157,7 +152,7 @@
     src: /opt/motd/motd/
     dest: /etc/update-motd.d/
     force: true
-    mode: 0775
+    mode: "0775"
 
 - name: Check if '/etc/ssh/sshd_config' exists
   ansible.builtin.stat:

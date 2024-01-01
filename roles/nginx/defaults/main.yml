@@ -29,8 +29,9 @@ nginx_paths_folders_list:
 nginx_web_subdomain: "{{ nginx_name }}"
 nginx_web_domain: "{{ user.domain }}"
 nginx_web_port: "80"
-nginx_web_url: "{{ 'https://' + lookup('vars', nginx_name + '_web_subdomain', default=nginx_web_subdomain)
-                   + '.' + lookup('vars', nginx_name + '_web_domain', default=nginx_web_domain) }}"
+nginx_web_url: "{{ 'https://' + (lookup('vars', nginx_name + '_web_subdomain', default=nginx_web_subdomain) + '.' + lookup('vars', nginx_name + '_web_domain', default=nginx_web_domain)
+                if (lookup('vars', nginx_name + '_web_subdomain', default=nginx_web_subdomain) | length > 0)
+                else lookup('vars', nginx_name + '_web_domain', default=nginx_web_domain)) }}"
 
 ################################
 # DNS
@@ -44,16 +45,13 @@ nginx_dns_proxy: "{{ dns.proxied }}"
 # Traefik
 ################################
 
+nginx_traefik_sso_middleware: ""
 nginx_traefik_middleware_default: "{{ traefik_default_middleware }}"
 nginx_traefik_middleware_custom: ""
-nginx_traefik_middleware: "{{ nginx_traefik_middleware_default + ','
-                              + nginx_traefik_middleware_custom
-                           if (not nginx_traefik_middleware_custom.startswith(',') and nginx_traefik_middleware_custom | length > 0)
-                           else nginx_traefik_middleware_default
-                              + nginx_traefik_middleware_custom }}"
-
 nginx_traefik_certresolver: "{{ traefik_default_certresolver }}"
 nginx_traefik_enabled: true
+nginx_traefik_api_enabled: false
+nginx_traefik_api_endpoint: ""
 
 ################################
 # Docker
@@ -88,7 +86,7 @@ nginx_docker_envs: "{{ lookup('vars', nginx_name + '_docker_envs_default', defau
 nginx_docker_commands_default: []
 nginx_docker_commands_custom: []
 nginx_docker_commands: "{{ lookup('vars', nginx_name + '_docker_commands_default', default=nginx_docker_commands_default)
-                           + lookup('vars', nginx_name + '_docker_docker_commands_custom', default=nginx_docker_commands_custom) }}"
+                           + lookup('vars', nginx_name + '_docker_commands_custom', default=nginx_docker_commands_custom) }}"
 
 # Volumes
 nginx_docker_volumes_default:

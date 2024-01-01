@@ -7,6 +7,18 @@
 #                   GNU General Public License v3.0                     #
 #########################################################################
 ---
+- name: "Check if '{{ mergerfs_service_name }}' exists"
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/{{ mergerfs_service_name }}"
+  register: saltbox_managed_mergerfs_status
+
+- name: "MergerFS | Stop '{{ mergerfs_service_name }}'"
+  ansible.builtin.systemd_service:
+    name: "{{ mergerfs_service_name }}"
+    state: stopped
+  ignore_errors: true
+  when: saltbox_managed_mergerfs_status.stat.exists
+
 - name: "MergerFS | Get URL for latest mergerfs release"
   ansible.builtin.shell: "{{ mergerfs_release_lookup_command }}"
   args:
@@ -18,6 +30,7 @@
   ansible.builtin.apt:
     name: mergerfs
     state: absent
+  ignore_errors: true
 
 - name: "MergerFS | Install mergerfs"
   ansible.builtin.apt:
@@ -28,19 +41,22 @@
   retries: 5
   delay: 10
 
-- name: "MergerFS | Import 'mergerfs.service'"
+- name: "MergerFS | Import '{{ mergerfs_service_name }}'"
   ansible.builtin.template:
     src: mergerfs.service.j2
-    dest: /etc/systemd/system/mergerfs.service
-    mode: "0755"
-    force: "{{ 'true' if ('mounts_override' in ansible_run_tags) else 'false' }}"
+    dest: /etc/systemd/system/{{ mergerfs_service_name }}
+    mode: "0644"
+    force: "{{ mergerfs_override_service }}"
+
+- name: "MergerFS | Systemd reload daemon"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
 
 - name: Mount Path Tasks
   ansible.builtin.import_tasks: "mount_path.yml"
 
-- name: "MergerFS | Start 'mergerfs.service'"
-  ansible.builtin.systemd:
-    name: mergerfs.service
+- name: "MergerFS | Start '{{ mergerfs_service_name }}'"
+  ansible.builtin.systemd_service:
+    name: "{{ mergerfs_service_name }}"
     state: started
     enabled: true
-    daemon_reload: true

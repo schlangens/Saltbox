@@ -28,7 +28,8 @@
     logrotate_d_items:
       - path: "saltbox"
         content: |
-          /srv/git/saltbox/saltbox.log {
+          /srv/git/saltbox/*.log {
+              su {{ user.name }} {{ user.name }}
               weekly
               rotate 5
               size {{ saltbox_max_log_size }}
@@ -49,6 +50,7 @@
       - path: "sandbox"
         content: |
           /opt/sandbox/sandbox.log {
+              su {{ user.name }} {{ user.name }}
               weekly
               rotate 5
               size {{ saltbox_max_log_size }}
@@ -59,6 +61,7 @@
       - path: "saltbox_mod"
         content: |
           /opt/saltbox_mod/saltbox_mod.log {
+              su {{ user.name }} {{ user.name }}
               weekly
               rotate 5
               size {{ saltbox_max_log_size }}
@@ -68,9 +71,10 @@
           }
       - path: "traefik"
         content: |
-          /opt/traefik/*.log {
-              rotate 5
-              size {{ traefik_max_log_size }}
+          /opt/traefik/access.log {
+              su {{ user.name }} {{ user.name }}
+              rotate {{ traefik_log_max_backups }}
+              size {{ traefik_log_max_size }}
               missingok
               notifempty
               postrotate
@@ -84,6 +88,6 @@
     path: "/etc/logrotate.d/{{ item.path }}"
     marker: "### SALTBOX MANAGED BLOCK - {mark} ###"
     block: "{{ item.content }}"
-    create: true
+    create: yes
     mode: "0644"
   loop: "{{ logrotate_d_items }}"

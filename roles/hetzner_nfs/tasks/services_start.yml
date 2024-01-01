@@ -7,28 +7,40 @@
 #                   GNU General Public License v3.0                     #
 #########################################################################
 ---
-- name: Start 'unionfs.service'
-  ansible.builtin.systemd:
+- name: Start '{{ mergerfs_service_name }}'
+  ansible.builtin.systemd_service:
     state: started
-    name: unionfs
-    daemon_reload: true
-    enabled: true
-  when: unionfs_service.stat.exists and unionfs_service_running
-
-- name: Start 'mergerfs.service'
-  ansible.builtin.systemd:
-    state: started
-    name: mergerfs
+    name: "{{ mergerfs_service_name }}"
     daemon_reload: true
     enabled: true
   when: mergerfs_service.stat.exists and mergerfs_service_running
 
-- name: Wait for 30 seconds before commencing
-  ansible.builtin.wait_for:
-    timeout: 30
+- name: Docker Service Running
   when: docker_binary.stat.exists and docker_service_running and not (docker_running_containers.stdout | trim | length == 0)
+  block:
+    - name: Wait for 30 seconds before commencing
+      ansible.builtin.wait_for:
+        timeout: 30
 
-- name: "Re-start all previously running Docker containers"
-  ansible.builtin.shell: 'docker start {{ docker_running_containers.stdout }}'
-  ignore_errors: true
-  when: docker_binary.stat.exists and docker_service_running and not (docker_running_containers.stdout | trim | length == 0)
+    - name: "Initialize Gluetun variable"
+      ansible.builtin.set_fact:
+        docker_containers_gluetun: []
+
+    - name: "Identify any Gluetun containers"
+      ansible.builtin.set_fact:
+        docker_containers_gluetun: "{{ docker_containers_gluetun + [item] }}"
+      loop: "{{ docker_running_containers.stdout.split() }}"
+      when: item in (gluetun_instances | default(['gluetun']))
+
+    - name: "Re-start all previously running Gluetun containers"
+      ansible.builtin.shell: "docker start {{ docker_containers_gluetun | join(' ') }}"
+      when: (docker_containers_gluetun | length > 0)
+      ignore_errors: true
+
+    - name: "Wait for {{ docker_network_container_health_delay }} seconds"
+      ansible.builtin.wait_for:
+        timeout: "{{ docker_network_container_health_delay }}"
+
+    - name: "Re-start all previously running Docker containers"
+      ansible.builtin.shell: 'docker start {{ docker_running_containers.stdout }}'
+      ignore_errors: true

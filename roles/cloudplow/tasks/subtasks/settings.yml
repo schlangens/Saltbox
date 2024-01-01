@@ -1,16 +1,30 @@
 #########################################################################
 # Title:         Saltbox: Cloudplow | Settings Task                     #
-# Author(s):     desimaniac                                             #
+# Author(s):     desimaniac, salty                                      #
 # URL:           https://github.com/saltyorg/Saltbox                    #
 # --                                                                    #
 #########################################################################
 #                   GNU General Public License v3.0                     #
 #########################################################################
 ---
+- name: Check if Plex instance is defined
+  ansible.builtin.set_fact:
+    plex_name: "{{ plex_name | default(plex_instances[0]) }}"
+
 - name: Settings | Import Plex Auth Token role
   ansible.builtin.include_role:
     name: plex_auth_token
   when: plex_account_is_enabled
+
+- name: Settings | Check if SABnzbd is installed
+  ansible.builtin.stat:
+    path: "{{ sabnzbd_paths_config_location }}"
+  register: stat_sabnzbd
+
+- name: Settings | Lookup SABnzbd API Key
+  ansible.builtin.set_fact:
+    sabnzbd_apikey: "{{ lookup('file', sabnzbd_paths_config_location) | regex_search('^api_key *= *.*', multiline=True) | regex_replace('.*= *(.*)$', '\\1') }}"
+  when: stat_sabnzbd.stat.exists
 
 - name: Settings | Check if 'config.json' exists
   ansible.builtin.stat:
@@ -18,7 +32,22 @@
   register: cloudplow_config
 
 - name: Settings | New 'config.json' tasks
+  when: (not cloudplow_config.stat.exists)
   block:
+    - name: Filter Rclone upload_from on remotes
+      ansible.builtin.set_fact:
+        cloudplow_upload_paths_unique: "{{ rclone.remotes
+                                           | selectattr('settings.upload', 'defined')
+                                           | selectattr('settings.upload', 'equalto', true)
+                                           | map(attribute='settings.upload_from')
+                                           | unique }}"
+
+    - name: Settings | Fail if duplicate folders where found.
+      ansible.builtin.fail:
+        msg:
+          - "Duplicate upload folders found. This is likely an error on your part."
+          - "If not then supply your own configuration file at '{{ cloudplow_config_path }}' and rerun the previous tag."
+      when: (cloudplow_remotes | length) != (cloudplow_upload_paths_unique | length)
 
     - name: Settings | Import 'config.json'
       ansible.builtin.template:
@@ -28,14 +57,10 @@
         group: "{{ user.name }}"
         mode: "0775"
         force: true
-      vars:
-        plex_name: "{{ plex_instances[0] }}"
-
-  when: (not cloudplow_config.stat.exists)
 
 - name: Settings | Existing 'config.json' tasks
+  when: cloudplow_config.stat.exists
   block:
-
     - name: Settings | Install required packages
       ansible.builtin.apt:
         state: present
@@ -51,9 +76,22 @@
 
     - name: Settings | Update NZBGet credentials in 'config.json'
       ansible.builtin.shell: |
-        jq '.nzbget.url = "{{ nzbget_web_url_with_login }}"' {{ cloudplow_config_path }} | sponge {{ cloudplow_config_path }}
+        jq '.nzbget.url = "{{ nzbget_web_local_url_web_login }}"' {{ cloudplow_config_path }} | sponge {{ cloudplow_config_path }}
       become: true
       become_user: "{{ user.name }}"
+
+    - name: Settings | Update SABnzbd URL in 'config.json'
+      ansible.builtin.shell: |
+        jq '.sabnzbd.url = "{{ sabnzbd_web_local_url }}"' {{ cloudplow_config_path }} | sponge {{ cloudplow_config_path }}
+      become: true
+      become_user: "{{ user.name }}"
+
+    - name: Settings | Update SABnzbd API Key in 'config.json'
+      ansible.builtin.shell: |
+        jq '.sabnzbd.apikey = "{{ sabnzbd_apikey }}"' {{ cloudplow_config_path }} | sponge {{ cloudplow_config_path }}
+      become: true
+      become_user: "{{ user.name }}"
+      when: stat_sabnzbd.stat.exists
 
     - name: Settings | Update Plex URL in 'config.json'
       ansible.builtin.shell: |
@@ -66,8 +104,6 @@
         jq '.plex.token = "{{ plex_auth_token | default('') }}"' {{ cloudplow_config_path }} | sponge {{ cloudplow_config_path }}
       become: true
       become_user: "{{ user.name }}"
-
-  when: cloudplow_config.stat.exists
 
 - name: Settings | Upgrade 'config.json'
   ansible.builtin.shell: "{{ cloudplow_python_path }} {{ cloudplow_script_path }} update_config"

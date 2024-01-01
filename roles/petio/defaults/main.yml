@@ -14,6 +14,12 @@
 petio_name: petio
 
 ################################
+# Settings
+################################
+
+petio_mongodb_version: "4.4"
+
+################################
 # Paths
 ################################
 
@@ -29,7 +35,9 @@ petio_paths_folders_list:
 petio_web_subdomain: "{{ petio_name }}"
 petio_web_domain: "{{ user.domain }}"
 petio_web_port: "7777"
-petio_web_url: "{{ 'https://' + petio_web_subdomain + '.' + petio_web_domain }}"
+petio_web_url: "{{ 'https://' + (petio_web_subdomain + '.' + petio_web_domain
+                if (petio_web_subdomain | length > 0)
+                else petio_web_domain) }}"
 
 ################################
 # DNS
@@ -43,14 +51,13 @@ petio_dns_proxy: "{{ dns.proxied }}"
 # Traefik
 ################################
 
+petio_traefik_sso_middleware: ""
 petio_traefik_middleware_default: "{{ traefik_default_middleware }}"
 petio_traefik_middleware_custom: ""
-petio_traefik_middleware: "{{ petio_traefik_middleware_default
-                              + (',' + petio_traefik_middleware_custom
-                                if (not petio_traefik_middleware_custom.startswith(',') and petio_traefik_middleware_custom | length > 0)
-                                else petio_traefik_middleware_custom) }}"
 petio_traefik_certresolver: "{{ traefik_default_certresolver }}"
 petio_traefik_enabled: true
+petio_traefik_api_enabled: false
+petio_traefik_api_endpoint: ""
 
 ################################
 # Docker

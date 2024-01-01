@@ -7,6 +7,19 @@
 #                   GNU General Public License v3.0                     #
 #########################################################################
 ---
+- name: Fail when rclone backup method is disabled and using restore_tar
+  ansible.builtin.fail:
+    msg:
+      - "Rclone backup is not enabled."
+      - "You must enable rclone, in the backup settings, to perform a with a specific tar file restore."
+  when: (not backup.rclone.enable) and (restore_tar is defined)
+
+- name: Fail when local backup method is enabled and using restore_tar
+  ansible.builtin.fail:
+    msg:
+      - "The restore_tar setting does not work with a local backup enabled."
+  when: backup.local.enable and (restore_tar is defined)
+
 - name: "Check if user '{{ user.name }}' exists"
   ansible.builtin.shell: "id -un {{ user.name }} >/dev/null 2>&1;"
   register: user_check
@@ -33,7 +46,6 @@
 - name: "Import 'localhost.yml' from '{{ playbook_dir }}'"
   when: localhost_yml_playbook_dir.stat.exists and (not restore_tar is defined)
   block:
-
     - name: "Check if a previous 'localhost.yml' exists"
       ansible.builtin.stat:
         path: "/srv/git/saltbox/inventories/host_vars/localhost.yml"

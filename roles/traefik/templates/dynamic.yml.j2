@@ -20,12 +20,27 @@ http:
         customResponseHeaders:
           X-Robots-Tag: "{{ traefik_x_robots }}"
           server: ""
+          x-xss-protection: ""
         frameDeny: false
         contentTypeNosniff: true
     secureHeaders:
       headers:
         sslProxyHeaders:
           X-Forwarded-Proto: https
+    dropsecurityheaders:
+      headers:
+        accessControlAllowCredentials: "true"
+        accessControlAllowHeaders: "*"
+        accessControlAllowMethods: "*"
+        accessControlAllowOriginList: "*"
+        accessControlExposeHeaders: "*"
+        accessControlMaxAge: "100000"
+        customresponseheaders:
+          content-security-policy: ""
+          permissions-policy: ""
+          referrer-policy: ""
+          x-frame-options: ""
+          cross-origin-opener-policy: ""
     hsts:
       headers:
         stsSeconds: 63072000
@@ -35,3 +50,10 @@ http:
   serversTransports:
     skipverify:
       insecureSkipVerify: true
+
+log:
+  noColor: true
+  maxSize: {{ traefik_log_max_size }}
+  maxBackups: "{{ traefik_log_max_backups }}"
+  maxAge: "{{ traefik_log_max_age }}"
+  compress: "{{ traefik_log_compress }}"

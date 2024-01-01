@@ -35,8 +35,9 @@ emby_paths_dlna_xml_location: "{{ emby_paths_location }}/config/dlna.xml"
 emby_web_subdomain: "{{ emby_name }}"
 emby_web_domain: "{{ user.domain }}"
 emby_web_port: "8096"
-emby_web_url: "{{ 'https://' + lookup('vars', emby_name + '_web_subdomain', default=emby_web_subdomain)
-                  + '.' + lookup('vars', emby_name + '_web_domain', default=emby_web_domain) }}"
+emby_web_url: "{{ 'https://' + (lookup('vars', emby_name + '_web_subdomain', default=emby_web_subdomain) + '.' + lookup('vars', emby_name + '_web_domain', default=emby_web_domain)
+               if (lookup('vars', emby_name + '_web_subdomain', default=emby_web_subdomain) | length > 0)
+               else lookup('vars', emby_name + '_web_domain', default=emby_web_domain)) }}"
 
 ################################
 # DNS
@@ -51,32 +52,22 @@ emby_dns_proxy: "{{ dns.proxied }}"
 ################################
 
 emby_traefik_sso_middleware: ""
-emby_traefik_themepark_middleware: "{{ ',themepark-' + lookup('vars', emby_name + '_name', default=emby_name)
-                                    if (emby_themepark_enabled and global_themepark_plugin_enabled)
-                                    else '' }}"
-
-emby_traefik_middleware_default: "{{ traefik_default_middleware + ','
-                                     + lookup('vars', emby_name + '_traefik_sso_middleware', default=emby_traefik_sso_middleware)
-                                  if (lookup('vars', emby_name + '_traefik_sso_middleware', default=emby_traefik_sso_middleware) | length > 0)
-                                  else traefik_default_middleware }}"
+emby_traefik_middleware_default: "{{ traefik_default_middleware
+                                     + (',themepark-' + lookup('vars', emby_name + '_name', default=emby_name)
+                                       if (emby_themepark_enabled and global_themepark_plugin_enabled)
+                                       else '') }}"
 emby_traefik_middleware_custom: ""
-emby_traefik_middleware: "{{ emby_traefik_middleware_default + ','
-                             + emby_traefik_middleware_custom
-                             + emby_traefik_themepark_middleware
-                          if (not emby_traefik_middleware_custom.startswith(',') and emby_traefik_middleware_custom | length > 0)
-                          else emby_traefik_middleware_default
-                             + emby_traefik_middleware_custom
-                             + emby_traefik_themepark_middleware }}"
-
 emby_traefik_certresolver: "{{ traefik_default_certresolver }}"
 emby_traefik_enabled: true
 emby_traefik_gzip_enabled: false
+emby_traefik_api_enabled: false
+emby_traefik_api_endpoint: ""
 
 ################################
 # THEME
 ################################
 
-# Options can be found at https://github.com/gilbN/theme.park
+# Options can be found at https://github.com/themepark-dev/theme.park
 emby_themepark_enabled: false
 emby_themepark_theme: "{{ global_themepark_theme }}"
 
@@ -135,18 +126,22 @@ emby_docker_envs: "{{ lookup('vars', emby_name + '_docker_envs_default', default
 emby_docker_commands_default: []
 emby_docker_commands_custom: []
 emby_docker_commands: "{{ lookup('vars', emby_name + '_docker_commands_default', default=emby_docker_commands_default)
-                          + lookup('vars', emby_name + '_docker_docker_commands_custom', default=emby_docker_commands_custom) }}"
+                          + lookup('vars', emby_name + '_docker_commands_custom', default=emby_docker_commands_custom) }}"
 
 # Volumes
 emby_docker_volumes_default:
   - "{{ emby_paths_location }}:/config"
   - "{{ server_appdata_path }}/scripts:/scripts"
-  - "/mnt/unionfs/Media:/data"
   - "/dev/shm:/dev/shm"
   - "{{ emby_paths_transcodes_location }}:/transcode"
+emby_docker_volumes_legacy:
+  - "/mnt/unionfs/Media:/data"
 emby_docker_volumes_custom: []
 emby_docker_volumes: "{{ lookup('vars', emby_name + '_docker_volumes_default', default=emby_docker_volumes_default)
-                         + lookup('vars', emby_name + '_docker_volumes_custom', default=emby_docker_volumes_custom) }}"
+                         + lookup('vars', emby_name + '_docker_volumes_custom', default=emby_docker_volumes_custom)
+                         + (lookup('vars', emby_name + '_docker_volumes_legacy', default=emby_docker_volumes_legacy)
+                           if docker_legacy_volume
+                           else []) }}"
 
 # Mounts
 emby_docker_mounts_default:

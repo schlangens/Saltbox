@@ -38,4 +38,4 @@
 - name: Install mainline
   ansible.builtin.apt:
     name: mainline
-    state: present
+    state: latest

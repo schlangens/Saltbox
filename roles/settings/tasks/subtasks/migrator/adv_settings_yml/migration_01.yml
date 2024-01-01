@@ -10,42 +10,105 @@
 ---
 - name: "Migrator | 'adv_settings.yml' | Migration 01 | Set variables"
   ansible.builtin.set_fact:
-    traefik_tls_settings: "{{ true if not
-        ((traefik is undefined)
-        or
-        (traefik is none)
-        or
-        (traefik | trim | length == 0)
-        or
-        (traefik.tls is undefined)
-        or
-        (traefik.tls is none)
-        or
-        (traefik.tls | trim | length == 0))
-        else false }}"
+    old_traefik_tls_settings: "{{ not ((traefik is undefined)
+                                  or
+                                  (traefik is none)
+                                  or
+                                  (traefik | trim | length == 0)
+                                  or
+                                  (traefik.tls is undefined)
+                                  or
+                                  (traefik.tls is none)
+                                  or
+                                  (traefik.tls | trim | length == 0)) }}"
+    old_traefik_http_settings: "{{ not ((traefik is undefined)
+                                   or
+                                   (traefik is none)
+                                   or
+                                   (traefik | trim | length == 0)
+                                   or
+                                   (traefik.http is undefined)
+                                   or
+                                   (traefik.http is none)
+                                   or
+                                   (traefik.http | trim | length == 0)) }}"
+    old_zerossl_settings: "{{ not ((dns is undefined)
+                              or
+                              (dns is none)
+                              or
+                              (dns | trim | length == 0)
+                              or
+                              (dns.zerossl is undefined)
+                              or
+                              (dns.zerossl is none)
+                              or
+                              (dns.zerossl | trim | length == 0)) }}"
+    traefik_metrics_settings: "{{ not ((traefik is undefined)
+                                  or
+                                  (traefik is none)
+                                  or
+                                  (traefik | trim | length == 0)
+                                  or
+                                  (traefik.metrics is undefined)
+                                  or
+                                  (traefik.metrics is none)
+                                  or
+                                  (traefik.metrics | trim | length == 0)) }}"
+    old_dockerhub: "{{ not ((dockerhub is undefined)
+                       or
+                       (dockerhub is none)
+                       or
+                       (dockerhub | trim | length == 0)) }}"
+    old_dns_enabled: "{{ not ((dns.enabled is undefined)
+                         or
+                         (dns.enabled is none)
+                         or
+                         (dns.enabled | trim | length == 0)) }}"
+    old_feeder_mount: "{{ not ((mounts.feeder is undefined)
+                          or
+                          (mounts.feeder is none)
+                          or
+                          (mounts.feeder | trim | length == 0)) }}"
+    old_remote_mount: "{{ not ((mounts.remote is undefined)
+                          or
+                          (mounts.remote is none)
+                          or
+                          (mounts.remote | trim | length == 0)) }}"
 
-- name: Migrator | 'adv_settings.yml' | Migration 01 | Rebuild 'traefik.tls' dict
+- name: Migrator | 'adv_settings.yml' | Migration 01 | Delete 'traefik.tls' dict
   ansible.builtin.shell: |
-    yyq e -i '.traefik.tls = "no"' {{ playbook_dir }}/{{ file }}
+    yyq e -i 'del(.traefik.tls)' {{ playbook_dir }}/{{ file }}
   become: true
   become_user: "{{ saltbox_yml.stat.pw_name }}"
-  when: (not traefik_tls_settings)
+  when: old_traefik_tls_settings
 
-- name: "Migrator | 'adv_settings.yml' | Migration 01 | Set variables"
-  ansible.builtin.set_fact:
-    traefik_metrics_settings: "{{ true if not
-        ((traefik is undefined)
-        or
-        (traefik is none)
-        or
-        (traefik | trim | length == 0)
-        or
-        (traefik.metrics is undefined)
-        or
-        (traefik.metrics is none)
-        or
-        (traefik.metrics | trim | length == 0))
-        else false }}"
+- name: Migrator | 'adv_settings.yml' | Migration 01 | Rebuild 'traefik.cert.http_validation' dict
+  ansible.builtin.shell: |
+    yyq e -i '.traefik.cert.http_validation = "{{ 'yes' if (traefik.http | default(false)) else 'no' }}"' {{ playbook_dir }}/{{ file }}
+  become: true
+  become_user: "{{ saltbox_yml.stat.pw_name }}"
+  when: old_traefik_http_settings
+
+- name: Migrator | 'adv_settings.yml' | Migration 01 | Delete 'traefik.http' dict
+  ansible.builtin.shell: |
+    yyq e -i 'del(.traefik.http)' {{ playbook_dir }}/{{ file }}
+  become: true
+  become_user: "{{ saltbox_yml.stat.pw_name }}"
+  when: old_traefik_http_settings
+
+- name: Migrator | 'adv_settings.yml' | Migration 01 | Rebuild 'traefik.cert.zerossl' dict
+  ansible.builtin.shell: |
+    yyq e -i '.traefik.cert.zerossl = "{{ 'yes' if (dns.zerossl | default(false)) else 'no' }}"' {{ playbook_dir }}/{{ file }}
+  become: true
+  become_user: "{{ saltbox_yml.stat.pw_name }}"
+  when: old_zerossl_settings
+
+- name: Migrator | 'adv_settings.yml' | Migration 01 | Delete 'dns.zerossl' dict
+  ansible.builtin.shell: |
+    yyq e -i 'del(.dns.zerossl)' {{ playbook_dir }}/{{ file }}
+  become: true
+  become_user: "{{ saltbox_yml.stat.pw_name }}"
+  when: old_zerossl_settings
 
 - name: Migrator | 'adv_settings.yml' | Migration 01 | Rebuild 'traefik.metrics' dict
   ansible.builtin.shell: |
@@ -54,22 +117,33 @@
   become_user: "{{ saltbox_yml.stat.pw_name }}"
   when: (not traefik_metrics_settings)
 
-- name: "Migrator | 'adv_settings.yml' | Migration 01 | Set variables"
-  ansible.builtin.set_fact:
-    old_dockerhub: "{{ true if not
-        ((dockerhub is undefined)
-        or
-        (dockerhub is none)
-        or
-        (dockerhub | trim | length == 0))
-        else false }}"
-
 - name: Migrator | 'adv_settings.yml' | Migration 01 | Delete 'dockerhub' dict
   ansible.builtin.shell: |
     yyq e -i 'del(.dockerhub)' {{ playbook_dir }}/{{ file }}
   become: true
   become_user: "{{ saltbox_yml.stat.pw_name }}"
   when: old_dockerhub
+
+- name: Migrator | 'adv_settings.yml' | Migration 01 | Delete 'dns.enabled' key-pair
+  ansible.builtin.shell: |
+    yyq e -i 'del(.dns.enabled)' {{ playbook_dir }}/{{ file }}
+  become: true
+  become_user: "{{ saltbox_yml.stat.pw_name }}"
+  when: old_dns_enabled
+
+- name: Migrator | 'adv_settings.yml' | Migration 01 | Delete 'mounts.feeder' dict
+  ansible.builtin.shell: |
+    yyq e -i 'del(.mounts.feeder)' {{ playbook_dir }}/{{ file }}
+  become: true
+  become_user: "{{ saltbox_yml.stat.pw_name }}"
+  when: old_feeder_mount
+
+- name: Migrator | 'adv_settings.yml' | Migration 01 | Delete 'mounts.remote' dict
+  ansible.builtin.shell: |
+    yyq e -i 'del(.mounts.remote)' {{ playbook_dir }}/{{ file }}
+  become: true
+  become_user: "{{ saltbox_yml.stat.pw_name }}"
+  when: old_remote_mount
 
 - name: Migrator | 'adv_settings.yml' | Migration 01 | Remove 'null' values
   ansible.builtin.replace:
@@ -78,7 +152,7 @@
     replace: ''
     owner: "{{ saltbox_yml.stat.uid }}"
     group: "{{ saltbox_yml.stat.gid }}"
-    mode: 0664
+    mode: "0664"
 
 - name: Migrator | 'adv_settings.yml' | Migration 01 | Re-import Variables
   ansible.builtin.include_vars: "{{ playbook_dir }}/{{ file }}"

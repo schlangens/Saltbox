@@ -29,3 +29,44 @@
     owner: "{{ user.name }}"
     group: "{{ user.name }}"
     mode: "0664"
+
+- name: Initialize 'custom_entrypoints' variable
+  ansible.builtin.set_fact:
+    custom_entrypoints: []
+    custom_entrypoints_ports: []
+
+- name: Check if entrypoints container ports we already use
+  ansible.builtin.fail:
+    msg: "You cannot use custom entrypoint with ports 80/443"
+  when: ((item.value.port | string) in ['80', '443'])
+  with_dict: "{{ traefik_entrypoint_custom }}"
+
+- name: Set 'custom_entrypoints' variable
+  ansible.builtin.set_fact:
+    custom_entrypoints: "{{ custom_entrypoints + (traefik_entrypoint_tls_template if item.value.tls else traefik_entrypoint_template) + (traefik_entrypoint_http3_template if (item.value.tls and traefik_http3) else []) }}"
+  loop: "{{ traefik_entrypoint_custom | dict2items }}"
+  when: (traefik_entrypoint_custom | length > 0)
+
+- name: Set 'custom_entrypoints_ports' variable
+  ansible.builtin.set_fact:
+    custom_entrypoints_ports: "{{ custom_entrypoints_ports + (lookup('vars', 'traefik_entrypoint_ports_' + item.value.type + '_template')) }}"
+  loop: "{{ traefik_entrypoint_custom | dict2items }}"
+  when: (traefik_entrypoint_custom | length > 0)
+
+- name: Set 'traefik_docker_ports_defaults' variable
+  ansible.builtin.set_fact:
+    traefik_docker_ports_defaults: "{{ (traefik_docker_ports_defaults + custom_entrypoints_ports) | unique }}"
+  when: (traefik_entrypoint_custom | length > 0)
+
+- name: Tailscale block
+  when: traefik_tailscale_enabled
+  block:
+    - name: Get Tailscale IPs
+      ansible.builtin.shell: "tailscale ip"
+      register: tailscale_ips
+      failed_when: tailscale_ips.rc != 0
+
+    - name: Set Tailscale variables
+      ansible.builtin.set_fact:
+        tailscale_ipv4: "{{ tailscale_ips.stdout_lines[0] }}"
+        tailscale_ipv6: "{{ tailscale_ips.stdout_lines[1] }}"

@@ -17,7 +17,6 @@
 - name: Install pip 'glances'
   ansible.builtin.shell: pip3 install glances[action,browser,cloud,cpuinfo,docker,folders,gpu,graph,ip,raid,snmp,web]
   ignore_errors: true
-  tags: glances
 
 - name: Create glances directory
   ansible.builtin.file:
@@ -25,7 +24,7 @@
     state: directory
     owner: root
     group: root
-    mode: 0775
+    mode: "0775"
   with_items:
     - /etc/glances
 
@@ -35,5 +34,5 @@
     dest: /etc/glances/glances.conf
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
     force: false

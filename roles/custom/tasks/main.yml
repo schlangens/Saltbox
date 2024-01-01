@@ -14,10 +14,14 @@
   ignore_errors: true
   loop: "{{ custom_apt }}"
 
-- name: Install custom pip modules
-  ansible.builtin.pip:
+- name: Install custom deb packages
+  ansible.builtin.apt:
     state: present
-    name: "{{ item }}"
-    executable: pip3
+    deb: "{{ item }}"
+  ignore_errors: true
+  loop: "{{ custom_deb }}"
+
+- name: Install custom pip modules
+  ansible.builtin.shell: "pip install {{ item }}"
   ignore_errors: true
   loop: "{{ custom_pip }}"

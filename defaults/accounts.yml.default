@@ -1,18 +1,17 @@
 ---
+apprise:
+cloudflare:
+  api:
+  email:
+dockerhub:
+  token:
+  user:
+plex:
+  pass:
+  user:
 user:
-  name: seed
-  pass: password123
   domain: testsaltbox.ml
   email: your@email.com
+  name: seed
+  pass: password123
   ssh_key:
-cloudflare:
-  email:
-  api:
-plex:
-  user:
-  pass:
-  tfa: no
-dockerhub:
-  user:
-  token:
-apprise:

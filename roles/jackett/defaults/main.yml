@@ -29,7 +29,9 @@ jackett_paths_folders_list:
 jackett_web_subdomain: "{{ jackett_name }}"
 jackett_web_domain: "{{ user.domain }}"
 jackett_web_port: "9117"
-jackett_web_url: "{{ 'https://' + jackett_web_subdomain + '.' + jackett_web_domain }}"
+jackett_web_url: "{{ 'https://' + (jackett_web_subdomain + '.' + jackett_web_domain
+                  if (jackett_web_subdomain | length > 0)
+                  else jackett_web_domain) }}"
 
 ################################
 # DNS
@@ -44,27 +46,18 @@ jackett_dns_proxy: "{{ dns.proxied }}"
 ################################
 
 jackett_traefik_sso_middleware: "{{ traefik_default_sso_middleware }}"
-
-jackett_traefik_middleware_default: "{{ traefik_default_middleware + ','
-                                        + lookup('vars', jackett_name + '_traefik_sso_middleware', default=jackett_traefik_sso_middleware)
-                                     if (lookup('vars', jackett_name + '_traefik_sso_middleware', default=jackett_traefik_sso_middleware) | length > 0)
-                                     else traefik_default_middleware }}"
+jackett_traefik_middleware_default: "{{ traefik_default_middleware }}"
 jackett_traefik_middleware_custom: ""
-jackett_traefik_middleware: "{{ jackett_traefik_middleware_default + ','
-                                + jackett_traefik_middleware_custom
-                             if (not jackett_traefik_middleware_custom.startswith(',') and jackett_traefik_middleware_custom | length > 0)
-                             else jackett_traefik_middleware_default
-                                + jackett_traefik_middleware_custom }}"
 jackett_traefik_certresolver: "{{ traefik_default_certresolver }}"
 jackett_traefik_enabled: true
 jackett_traefik_api_enabled: true
-jackett_traefik_api_endpoint: "`/api`,`/dl`"
+jackett_traefik_api_endpoint: "PathPrefix(`/api`) || PathPrefix(`/dl`)"
 
 ################################
 # THEME
 ################################
 
-# Options can be found at https://github.com/gilbN/theme.park
+# Options can be found at https://github.com/themepark-dev/theme.park
 jackett_themepark_enabled: false
 jackett_themepark_theme: "{{ global_themepark_theme }}"
 jackett_themepark_domain: "{{ global_themepark_domain }}"
@@ -79,7 +72,7 @@ jackett_docker_container: "{{ jackett_name }}"
 # Image
 jackett_docker_image_pull: true
 jackett_docker_image_tag: "release"
-jackett_docker_image: "cr.hotio.dev/hotio/jackett:{{ jackett_docker_image_tag }}"
+jackett_docker_image: "ghcr.io/hotio/jackett:{{ jackett_docker_image_tag }}"
 
 # Ports
 jackett_docker_ports_defaults: []

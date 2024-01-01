@@ -38,6 +38,7 @@ nzbget_web_domain: "{{ user.domain }}"
 nzbget_web_port: "6789"
 nzbget_web_login: "{{ user.name }}:{{ user.pass }}"
 nzbget_web_url_with_login: "{{ 'https://' + nzbget_web_login + '@' + nzbget_web_subdomain + '.' + nzbget_web_domain }}"
+nzbget_web_local_url_web_login: "{{ 'http://' + nzbget_web_login + '@' + nzbget_name + ':' + nzbget_web_port }}"
 
 ################################
 # DNS
@@ -52,22 +53,12 @@ nzbget_dns_proxy: "{{ dns.proxied }}"
 ################################
 
 nzbget_traefik_sso_middleware: "{{ traefik_default_sso_middleware }}"
-
-nzbget_traefik_middleware_default: "{{ traefik_default_middleware + ','
-                                       + lookup('vars', nzbget_name + '_traefik_sso_middleware', default=nzbget_traefik_sso_middleware)
-                                    if (lookup('vars', nzbget_name + '_traefik_sso_middleware', default=nzbget_traefik_sso_middleware) | length > 0)
-                                    else traefik_default_middleware }}"
+nzbget_traefik_middleware_default: "{{ traefik_default_middleware }}"
 nzbget_traefik_middleware_custom: ""
-nzbget_traefik_middleware: "{{ nzbget_traefik_middleware_default + ','
-                               + nzbget_traefik_middleware_custom
-                            if (not nzbget_traefik_middleware_custom.startswith(',') and nzbget_traefik_middleware_custom | length > 0)
-                            else nzbget_traefik_middleware_default
-                               + nzbget_traefik_middleware_custom }}"
-nzbget_traefik_middleware_api: "{{ traefik_global_middleware }}"
 nzbget_traefik_certresolver: "{{ traefik_default_certresolver }}"
 nzbget_traefik_enabled: true
 nzbget_traefik_api_enabled: true
-nzbget_traefik_api_endpoint: "`/{[A-Za-z0-9]+}:{[A-Za-z0-9]+}/{xml|jsonp?}rpc`,`/{xml|jsonp?}rpc`"
+nzbget_traefik_api_endpoint: "PathRegexp(`^/[A-Za-z0-9]+:[A-Za-z0-9]+/(xml|json|jsonp)rpc`) || PathRegexp(`^/(xml|json|jsonp)rpc`)"
 
 ################################
 # Config
@@ -81,7 +72,7 @@ nzbget_config_new_installs_settings_default:
   - { regexp: '^ControlPassword\s?=.*', line: "ControlPassword={{ user.pass }}" }
   - { regexp: '^FormAuth\s?=.*', line: 'FormAuth=yes' }
   # Paths
-  - { regexp: '^MainDir\s?=.*', line: 'MainDir=/mnt/unionfs/downloads/nzbs/nzbget' }
+  - { regexp: '^MainDir\s?=.*', line: 'MainDir=/mnt/unionfs/downloads/nzbs/{{ nzbget_name }}' }
   - { regexp: '^QueueDir\s?=.*', line: "QueueDir=${MainDir}/queue" }
   - { regexp: '^TempDir\s?=.*', line: "TempDir=${MainDir}/tmp" }
   - { regexp: '^ScriptDir\s?=.*', line: 'ScriptDir=/scripts/nzbget' }
@@ -178,7 +169,7 @@ nzbget_scripts_local_copy_list: "{{ nzbget_scripts_local_copy_default
 # THEME
 ################################
 
-# Options can be found at https://github.com/gilbN/theme.park
+# Options can be found at https://github.com/themepark-dev/theme.park
 nzbget_themepark_enabled: false
 nzbget_themepark_theme: "{{ global_themepark_theme }}"
 nzbget_themepark_domain: "{{ global_themepark_domain }}"
@@ -193,7 +184,7 @@ nzbget_docker_container: "{{ nzbget_name }}"
 # Image
 nzbget_docker_image_pull: true
 nzbget_docker_image_tag: "release"
-nzbget_docker_image: "cr.hotio.dev/hotio/nzbget:{{ nzbget_docker_image_tag }}"
+nzbget_docker_image: "docker.io/hotio/nzbget:{{ nzbget_docker_image_tag }}"
 
 # Ports
 nzbget_docker_ports_defaults: []

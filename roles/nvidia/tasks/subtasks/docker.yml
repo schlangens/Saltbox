@@ -7,7 +7,7 @@
 #                   GNU General Public License v3.0                     #
 #########################################################################
 ---
-- name: Binary | Remove old official repository entry
+- name: Docker | Remove old official repository entry
   ansible.builtin.apt_repository:
     repo: "{{ item }}"
     filename: "{{ nvidia_docker_runtime_apt_repo_file }}"
@@ -30,7 +30,7 @@
     repo: "{{ item }}"
     filename: "{{ nvidia_docker_runtime_apt_repo_file }}"
     state: present
-    mode: 0644
+    mode: "0644"
     update_cache: true
   loop: "{{ lookup('ansible.builtin.url', nvidia_docker_runtime_apt_repo_list_url, wantlist=True) | replace('deb', 'deb [signed-by=/etc/apt/trusted.gpg.d/nvidia.asc]') }}"
   when: not item.startswith('#')
@@ -60,7 +60,7 @@
   when: docker_service_running and (docker_running_containers.stdout | trim | length > 0)
 
 - name: Docker | Stop docker service
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: docker
     state: stopped
   when: docker_service_running
@@ -70,12 +70,33 @@
   ansible.builtin.shell: "{{ nvidia_docker_runtime_docker_daemon_json_jq_command }}"
 
 - name: Docker | Start docker service
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     name: docker
     state: started
   when: docker_service_running
 
-- name: Docker | Re-start all previously running Docker containers
-  ansible.builtin.shell: 'docker start {{ docker_running_containers.stdout }}'
-  ignore_errors: true
+- name: Docker Service Running
   when: docker_service_running and (docker_running_containers.stdout | trim | length > 0)
+  block:
+    - name: "Docker | Initialize Gluetun variable"
+      ansible.builtin.set_fact:
+        docker_containers_gluetun: []
+
+    - name: "Docker | Identify any Gluetun containers"
+      ansible.builtin.set_fact:
+        docker_containers_gluetun: "{{ docker_containers_gluetun + [item] }}"
+      loop: "{{ docker_running_containers.stdout.split() }}"
+      when: item in (gluetun_instances | default(['gluetun']))
+
+    - name: "Docker | Re-start all previously running Gluetun containers"
+      ansible.builtin.shell: "docker start {{ docker_containers_gluetun | join(' ') }}"
+      when: (docker_containers_gluetun | length > 0)
+      ignore_errors: true
+
+    - name: "Docker | Wait for {{ docker_network_container_health_delay }} seconds"
+      ansible.builtin.wait_for:
+        timeout: "{{ docker_network_container_health_delay }}"
+
+    - name: "Docker | Re-start all previously running Docker containers"
+      ansible.builtin.shell: 'docker start {{ docker_running_containers.stdout }}'
+      ignore_errors: true

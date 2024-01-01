@@ -11,7 +11,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: 0775
+    mode: "0775"
     owner: "{{ user.name }}"
     group: "{{ user.name }}"
   with_items:
@@ -24,7 +24,7 @@
     dest: /etc/hosts.deny
     owner: '{{ user.name }}'
     group: '{{ user.name }}'
-    mode: 0644
+    mode: "0644"
     force: true
 
 - name: Import 'hosts.allow' file
@@ -33,7 +33,7 @@
     dest: /etc/hosts.allow
     owner: '{{ user.name }}'
     group: '{{ user.name }}'
-    mode: 0644
+    mode: "0644"
     force: true
 
 - name: Install nfs requirements
@@ -49,8 +49,8 @@
     dest: /opt/hetzner_nfs/init_vlan.sh
     owner: '{{ user.name }}'
     group: '{{ user.name }}'
-    mode: 0775
-    force: "{{ true if hetzner_nfs_init_overwrite_client else false }}"
+    mode: "0775"
+    force: "{{ hetzner_nfs_init_overwrite_client }}"
 
 - name: Check 'nfs_vlan.service' exists
   ansible.builtin.stat:
@@ -63,49 +63,31 @@
     dest: /etc/systemd/system/nfs_vlan.service
     owner: '{{ user.name }}'
     group: '{{ user.name }}'
-    mode: 0775
+    mode: "0644"
     force: true
   when: (not nfs_vlan_service.stat.exists)
 
 - name: Start 'nfs_vlan.service'
-  ansible.builtin.systemd:
+  ansible.builtin.systemd_service:
     state: started
     name: nfs_vlan
     daemon_reload: true
     enabled: true
 
- # unionfs edits
-
-- name: Add 'After=init_vlan.service' to 'unionfs.service'
-  ansible.builtin.lineinfile:
-    path: /etc/systemd/system/unionfs.service
-    regexp: '(^After\=network-online\.target).*'
-    line: '\1 init_vlan.service'
-    state: present
-    backrefs: yes
-  when: unionfs_service.stat.exists
-
-- name: Replace '/mnt/local' with '/mnt/feeder' in 'unionfs.service'
-  ansible.builtin.replace:
-    path: /etc/systemd/system/unionfs.service
-    regexp: "\\/mnt\\/local"
-    replace: '/mnt/feeder'
-  when: unionfs_service.stat.exists
-
   # mergerfs edits
 
-- name: Add 'After=init_vlan.service' to 'mergerfs.service'
+- name: Add 'After=init_vlan.service' to '{{ mergerfs_service_name }}'
   ansible.builtin.lineinfile:
-    path: /etc/systemd/system/mergerfs.service
+    path: "/etc/systemd/system/{{ mergerfs_service_name }}"
     regexp: '(^After\=network-online\.target).*'
     line: '\1 init_vlan.service'
     state: present
     backrefs: yes
   when: mergerfs_service.stat.exists
 
-- name: Replace '/mnt/local' with '/mnt/feeder' in 'mergerfs.service'
+- name: Replace '/mnt/local' with '/mnt/feeder' in '{{ mergerfs_service_name }}'
   ansible.builtin.replace:
-    path: /etc/systemd/system/mergerfs.service
+    path: "/etc/systemd/system/{{ mergerfs_service_name }}"
     regexp: "\\/mnt\\/local"
     replace: '/mnt/feeder'
   when: mergerfs_service.stat.exists

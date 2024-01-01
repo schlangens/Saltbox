@@ -1,0 +1,58 @@
+# /etc/systemd/system/{{ _service_file }}
+#########################################################################
+# Title:         Saltbox: Rclone SFTP Mount                             #
+# Author(s):     salty                                                  #
+# URL:           https://github.com/saltyorg/Saltbox                    #
+# --                                                                    #
+#########################################################################
+#                   GNU General Public License v3.0                     #
+#########################################################################
+
+[Unit]
+Description=Rclone SFTP Mount
+After=network-online.target
+
+[Service]
+User={{ user.name }}
+Group={{ user.name }}
+Type=notify
+ExecStartPre=/bin/sleep 10
+ExecStart=/usr/bin/rclone mount \
+    --allow-other \
+{% if (rclone_vfs_cache_dir_lookup | length > 0) and item.settings.vfs_cache.enabled %}
+    --cache-dir={{ rclone_vfs_cache_dir_lookup }} \
+{% endif %}
+    --config={{ rclone_config_path }} \
+    --copy-links \
+    --dir-cache-time={{ rclone_sftp_dir_cache_time }} \
+    --max-read-ahead=200M \
+    --rc \
+    --rc-addr=localhost:{{ rclone_remort_port }} \
+{% if rclone_enable_metrics %}
+    --rc-enable-metrics \
+{% endif %}
+    --rc-no-auth \
+{% if rclone_sftp_disable_hashcheck %}
+    --sftp-disable-hashcheck \
+{% endif %}
+    --syslog \
+    --umask=002 \
+    --user-agent='{{ user_agent }}' \
+{% if item.settings.vfs_cache.enabled %}
+    --vfs-cache-min-free-space={{ rclone_vfs_cache_min_free_space }} \
+    --vfs-cache-max-age={{ item.settings.vfs_cache.max_age | default('504h') }} \
+    --vfs-cache-max-size={{ item.settings.vfs_cache.size | default('50G') }} \
+    --vfs-cache-mode=full \
+    --vfs-cache-poll-interval={{ rclone_vfs_cache_poll_interval }} \
+    --vfs-fast-fingerprint \
+{% endif %}
+    -v \
+    "{{ rclone_remote_with_path + ('/mnt/local' if item.remote == 'feeder' else '') }}" "/mnt/remote/{{ rclone_remote_name }}"
+ExecStop=/bin/fusermount3 -uz "/mnt/remote/{{ rclone_remote_name }}"
+Restart=on-abort
+RestartSec=5
+StartLimitInterval=60s
+StartLimitBurst=3
+
+[Install]
+WantedBy=default.target

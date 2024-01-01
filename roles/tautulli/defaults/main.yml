@@ -31,8 +31,9 @@ tautulli_paths_folders_list:
 tautulli_web_subdomain: "{{ tautulli_name }}"
 tautulli_web_domain: "{{ user.domain }}"
 tautulli_web_port: "8181"
-tautulli_web_url: "{{ 'https://' + lookup('vars', tautulli_name + '_web_subdomain', default=tautulli_web_subdomain)
-                      + '.' + lookup('vars', tautulli_name + '_web_domain', default=tautulli_web_domain) }}"
+tautulli_web_url: "{{ 'https://' + (lookup('vars', tautulli_name + '_web_subdomain', default=tautulli_web_subdomain) + '.' + lookup('vars', tautulli_name + '_web_domain', default=tautulli_web_domain)
+                   if (lookup('vars', tautulli_name + '_web_subdomain', default=tautulli_web_subdomain) | length > 0)
+                   else lookup('vars', tautulli_name + '_web_domain', default=tautulli_web_domain)) }}"
 
 ################################
 # DNS
@@ -47,28 +48,19 @@ tautulli_dns_proxy: "{{ dns.proxied }}"
 ################################
 
 tautulli_traefik_sso_middleware: "{{ traefik_default_sso_middleware }}"
-
-tautulli_traefik_middleware_default: "{{ traefik_default_middleware + ','
-                                         + lookup('vars', tautulli_name + '_traefik_sso_middleware', default=tautulli_traefik_sso_middleware)
-                                      if (lookup('vars', tautulli_name + '_traefik_sso_middleware', default=tautulli_traefik_sso_middleware) | length > 0)
-                                      else traefik_default_middleware }}"
+tautulli_traefik_middleware_default: "{{ traefik_default_middleware }}"
 tautulli_traefik_middleware_custom: ""
-tautulli_traefik_middleware: "{{ tautulli_traefik_middleware_default + ','
-                                 + tautulli_traefik_middleware_custom
-                              if (not tautulli_traefik_middleware_custom.startswith(',') and tautulli_traefik_middleware_custom | length > 0)
-                              else tautulli_traefik_middleware_default
-                                 + tautulli_traefik_middleware_custom }}"
-
 tautulli_traefik_certresolver: "{{ traefik_default_certresolver }}"
 tautulli_traefik_enabled: true
 tautulli_traefik_api_enabled: true
-tautulli_traefik_api_endpoint: "`/api`,`/newsletter`,`/image`,`/pms_image_proxy`"
+tautulli_traefik_api_endpoint: "PathPrefix(`/api`) || PathPrefix(`/newsletter`) || PathPrefix(`/image`) || PathPrefix(`/pms_image_proxy`)"
+tautulli_traefik_gzip_enabled: false
 
 ################################
 # THEME
 ################################
 
-# Options can be found at https://github.com/gilbN/theme.park
+# Options can be found at https://github.com/themepark-dev/theme.park
 tautulli_themepark_enabled: false
 tautulli_themepark_theme: "{{ global_themepark_theme }}"
 tautulli_themepark_domain: "{{ global_themepark_domain }}"
@@ -82,7 +74,7 @@ tautulli_docker_container: "{{ tautulli_name }}"
 
 # Image
 tautulli_docker_image_pull: true
-tautulli_docker_image_repo: "cr.hotio.dev/hotio/tautulli"
+tautulli_docker_image_repo: "ghcr.io/hotio/tautulli"
 tautulli_docker_image_tag: "release"
 tautulli_docker_image: "{{ lookup('vars', tautulli_name + '_docker_image_repo', default=tautulli_docker_image_repo)
                            + ':' + lookup('vars', tautulli_name + '_docker_image_tag', default=tautulli_docker_image_tag) }}"
@@ -110,7 +102,7 @@ tautulli_docker_envs: "{{ lookup('vars', tautulli_name + '_docker_envs_default',
 tautulli_docker_commands_default: []
 tautulli_docker_commands_custom: []
 tautulli_docker_commands: "{{ lookup('vars', tautulli_name + '_docker_commands_default', default=tautulli_docker_commands_default)
-                              + lookup('vars', tautulli_name + '_docker_docker_commands_custom', default=tautulli_docker_commands_custom) }}"
+                              + lookup('vars', tautulli_name + '_docker_commands_custom', default=tautulli_docker_commands_custom) }}"
 
 # Volumes
 tautulli_docker_volumes_default:

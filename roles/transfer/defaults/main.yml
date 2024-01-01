@@ -28,7 +28,9 @@ transfer_web_domain: "{{ user.domain }}"
 transfer_web_port: "8080"
 transfer_web_user: "{{ user.name }}"
 transfer_web_pass: "{{ user.pass }}"
-transfer_web_url: "{{ 'https://' + transfer_web_subdomain + '.' + transfer_web_domain }}"
+transfer_web_url: "{{ 'https://' + (transfer_web_subdomain + '.' + transfer_web_domain
+                   if (transfer_web_subdomain | length > 0)
+                   else transfer_web_domain) }}"
 
 ################################
 # DNS
@@ -42,15 +44,13 @@ transfer_dns_proxy: "{{ dns.proxied }}"
 # Traefik
 ################################
 
+transfer_traefik_sso_middleware: ""
 transfer_traefik_middleware_default: "{{ traefik_default_middleware }}"
 transfer_traefik_middleware_custom: ""
-transfer_traefik_middleware: "{{ transfer_traefik_middleware_default + ','
-                                 + transfer_traefik_middleware_custom
-                              if (not transfer_traefik_middleware_custom.startswith(',') and transfer_traefik_middleware_custom | length > 0)
-                              else transfer_traefik_middleware_default
-                                 + transfer_traefik_middleware_custom }}"
 transfer_traefik_certresolver: "{{ traefik_default_certresolver }}"
 transfer_traefik_enabled: true
+transfer_traefik_api_enabled: false
+transfer_traefik_api_endpoint: ""
 
 ################################
 # Docker

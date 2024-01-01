@@ -22,7 +22,6 @@
       rsync: "{{ backup.rsync | combine(rsync_tmp) }}"
       cron:
         cron_time: "{{ backup.cron.cron_time }}"
-        enable: "{{ backup.cron.enable }}"
       restore_service:
         user: "{{ backup.restore_service.user }}"
         pass: "{{ backup.restore_service.pass }}"
@@ -32,22 +31,20 @@
 # Restore service
 - name: "Set 'restore_service_enabled' variable"
   ansible.builtin.set_fact:
-    restore_service_enabled: "{{ true if not
-        ((backup.restore_service is undefined)
-        or
-        (backup.restore_service is none)
-        or
-        (backup.restore_service | trim | length == 0)
-        or
-        (backup.restore_service.user is undefined)
-        or
-        (backup.restore_service.user is none)
-        or
-        (backup.restore_service.user | trim | length == 0)
-        or
-        (backup.restore_service.pass is undefined)
-        or
-        (backup.restore_service.pass is none)
-        or
-        (backup.restore_service.pass | trim | length == 0))
-      else false }}"
+    restore_service_enabled: "{{ not ((backup.restore_service is undefined)
+                                 or
+                                 (backup.restore_service is none)
+                                 or
+                                 (backup.restore_service | trim | length == 0)
+                                 or
+                                 (backup.restore_service.user is undefined)
+                                 or
+                                 (backup.restore_service.user is none)
+                                 or
+                                 (backup.restore_service.user | trim | length == 0)
+                                 or
+                                 (backup.restore_service.pass is undefined)
+                                 or
+                                 (backup.restore_service.pass is none)
+                                 or
+                                 (backup.restore_service.pass | trim | length == 0)) }}"

@@ -29,8 +29,9 @@ bazarr_paths_folders_list:
 bazarr_web_subdomain: "{{ bazarr_name }}"
 bazarr_web_domain: "{{ user.domain }}"
 bazarr_web_port: "6767"
-bazarr_web_url: "{{ 'https://' + lookup('vars', bazarr_name + '_web_subdomain', default=bazarr_web_subdomain)
-                    + '.' + lookup('vars', bazarr_name + '_web_domain', default=bazarr_web_domain) }}"
+bazarr_web_url: "{{ 'https://' + (lookup('vars', bazarr_name + '_web_subdomain', default=bazarr_web_subdomain) + '.' + lookup('vars', bazarr_name + '_web_domain', default=bazarr_web_domain)
+                 if (lookup('vars', bazarr_name + '_web_subdomain', default=bazarr_web_subdomain) | length > 0)
+                 else lookup('vars', bazarr_name + '_web_domain', default=bazarr_web_domain)) }}"
 
 ################################
 # DNS
@@ -45,28 +46,18 @@ bazarr_dns_proxy: "{{ dns.proxied }}"
 ################################
 
 bazarr_traefik_sso_middleware: "{{ traefik_default_sso_middleware }}"
-
-bazarr_traefik_middleware_default: "{{ traefik_default_middleware + ','
-                                       + lookup('vars', bazarr_name + '_traefik_sso_middleware', default=bazarr_traefik_sso_middleware)
-                                    if (lookup('vars', bazarr_name + '_traefik_sso_middleware', default=bazarr_traefik_sso_middleware) | length > 0)
-                                    else traefik_default_middleware }}"
+bazarr_traefik_middleware_default: "{{ traefik_default_middleware }}"
 bazarr_traefik_middleware_custom: ""
-bazarr_traefik_middleware: "{{ bazarr_traefik_middleware_default + ','
-                               + bazarr_traefik_middleware_custom
-                            if (not bazarr_traefik_middleware_custom.startswith(',') and bazarr_traefik_middleware_custom | length > 0)
-                            else bazarr_traefik_middleware_default
-                               + bazarr_traefik_middleware_custom }}"
-
 bazarr_traefik_certresolver: "{{ traefik_default_certresolver }}"
 bazarr_traefik_enabled: true
 bazarr_traefik_api_enabled: true
-bazarr_traefik_api_endpoint: "`/api`"
+bazarr_traefik_api_endpoint: "PathPrefix(`/api`)"
 
 ################################
 # THEME
 ################################
 
-# Options can be found at https://github.com/gilbN/theme.park
+# Options can be found at https://github.com/themepark-dev/theme.park
 bazarr_themepark_enabled: false
 bazarr_themepark_theme: "{{ global_themepark_theme }}"
 bazarr_themepark_domain: "{{ global_themepark_domain }}"
@@ -80,7 +71,7 @@ bazarr_docker_container: "{{ bazarr_name }}"
 
 # Image
 bazarr_docker_image_pull: true
-bazarr_docker_image_repo: "cr.hotio.dev/hotio/bazarr"
+bazarr_docker_image_repo: "ghcr.io/hotio/bazarr"
 bazarr_docker_image_tag: "latest"
 bazarr_docker_image: "{{ lookup('vars', bazarr_name + '_docker_image_repo', default=bazarr_docker_image_repo)
                          + ':' + lookup('vars', bazarr_name + '_docker_image_tag', default=bazarr_docker_image_tag) }}"
@@ -108,12 +99,13 @@ bazarr_docker_envs: "{{ lookup('vars', bazarr_name + '_docker_envs_default', def
 bazarr_docker_commands_default: []
 bazarr_docker_commands_custom: []
 bazarr_docker_commands: "{{ lookup('vars', bazarr_name + '_docker_commands_default', default=bazarr_docker_commands_default)
-                            + lookup('vars', bazarr_name + '_docker_docker_commands_custom', default=bazarr_docker_commands_custom) }}"
+                            + lookup('vars', bazarr_name + '_docker_commands_custom', default=bazarr_docker_commands_custom) }}"
 
 # Volumes
 bazarr_docker_volumes_default:
   - "{{ bazarr_paths_location }}:/config"
   - "/opt/scripts:/scripts"
+bazarr_docker_volumes_legacy:
   - "/mnt/unionfs/Media/Movies:/movies"
   - "/mnt/unionfs/Media/TV:/tv"
 bazarr_docker_volumes_custom: []
@@ -121,10 +113,12 @@ bazarr_docker_volumes_theme:
   - "{{ bazarr_paths_location }}/98-themepark:/etc/cont-init.d/98-themepark"
 bazarr_docker_volumes: "{{ lookup('vars', bazarr_name + '_docker_volumes_default', default=bazarr_docker_volumes_default)
                            + lookup('vars', bazarr_name + '_docker_volumes_custom', default=bazarr_docker_volumes_custom)
-                        if not (lookup('vars', bazarr_name + '_themepark_enabled', default=bazarr_themepark_enabled))
-                        else lookup('vars', bazarr_name + '_docker_volumes_default', default=bazarr_docker_volumes_default)
-                           + lookup('vars', bazarr_name + '_docker_volumes_custom', default=bazarr_docker_volumes_custom)
-                           + lookup('vars', bazarr_name + '_docker_volumes_theme', default=bazarr_docker_volumes_theme) }}"
+                           + (lookup('vars', bazarr_name + '_docker_volumes_legacy', default=bazarr_docker_volumes_legacy)
+                             if docker_legacy_volume
+                             else [])
+                           + (lookup('vars', bazarr_name + '_docker_volumes_theme', default=bazarr_docker_volumes_theme)
+                             if lookup('vars', bazarr_name + '_themepark_enabled', default=bazarr_themepark_enabled)
+                             else []) }}"
 
 # Devices
 bazarr_docker_devices_default: []

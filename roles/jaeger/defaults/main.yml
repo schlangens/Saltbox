@@ -29,7 +29,9 @@ jaeger_paths_folders_list:
 jaeger_web_subdomain: "{{ traefik.subdomains.jaeger }}"
 jaeger_web_domain: "{{ user.domain }}"
 jaeger_web_port: "16686"
-jaeger_web_url: "{{ 'https://' + jaeger_web_subdomain + '.' + jaeger_web_domain }}"
+jaeger_web_url: "{{ 'https://' + (jaeger_web_subdomain + '.' + jaeger_web_domain
+                 if (jaeger_web_subdomain | length > 0)
+                 else jaeger_web_domain) }}"
 
 ################################
 # DNS
@@ -44,19 +46,12 @@ jaeger_dns_proxy: "{{ dns.proxied }}"
 ################################
 
 jaeger_traefik_sso_middleware: "{{ traefik_default_sso_middleware }}"
-
-jaeger_traefik_middleware_default: "{{ traefik_default_middleware + ','
-                                       + lookup('vars', jaeger_name + '_traefik_sso_middleware', default=jaeger_traefik_sso_middleware)
-                                    if (lookup('vars', jaeger_name + '_traefik_sso_middleware', default=jaeger_traefik_sso_middleware) | length > 0)
-                                    else traefik_default_middleware }}"
+jaeger_traefik_middleware_default: "{{ traefik_default_middleware }}"
 jaeger_traefik_middleware_custom: ""
-jaeger_traefik_middleware: "{{ jaeger_traefik_middleware_default + ','
-                               + jaeger_traefik_middleware_custom
-                            if (not jaeger_traefik_middleware_custom.startswith(',') and jaeger_traefik_middleware_custom | length > 0)
-                            else jaeger_traefik_middleware_default
-                               + jaeger_traefik_middleware_custom }}"
 jaeger_traefik_certresolver: "{{ traefik_default_certresolver }}"
 jaeger_traefik_enabled: true
+jaeger_traefik_api_enabled: false
+jaeger_traefik_api_endpoint: ""
 
 ################################
 # Docker
